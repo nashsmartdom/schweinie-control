@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import logging
+from pathlib import Path
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -20,6 +21,10 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+CARD_URL = f"/{DOMAIN}/schweinie-control-card.js"
+CARD_FILE = Path(__file__).parent / "www" / "schweinie-control-card.js"
+FRONTEND_REGISTERED = "_frontend_registered"
+
 
 @dataclass
 class SchweinieRuntimeData:
@@ -37,6 +42,9 @@ class SchweinieRuntimeData:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    await _async_register_frontend(hass, domain_data)
+
     data = SchweinieRuntimeData(
         vacuum_entity=entry.data.get(CONF_VACUUM_ENTITY, DEFAULT_VACUUM_ENTITY),
         customized_cleaning_switch=entry.data.get(
@@ -44,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     )
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = data
+    domain_data[entry.entry_id] = data
 
     async def clean_rooms(call: ServiceCall) -> None:
         rooms = _parse_rooms(call.data.get("rooms")) or sorted(data.selected_rooms)
@@ -101,6 +109,30 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unload_ok
+
+
+async def _async_register_frontend(hass: HomeAssistant, domain_data: dict[str, Any]) -> None:
+    if domain_data.get(FRONTEND_REGISTERED):
+        return
+
+    if not CARD_FILE.exists():
+        _LOGGER.warning("Schweinie Control card file not found: %s", CARD_FILE)
+        return
+
+    try:
+        from homeassistant.components.http import StaticPathConfig
+
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(CARD_URL, str(CARD_FILE), True)]
+        )
+    except Exception as err:  # pragma: no cover - compatibility fallback
+        try:
+            hass.http.register_static_path(CARD_URL, str(CARD_FILE), True)
+        except Exception:
+            _LOGGER.debug("Frontend path already registered or unavailable: %s", err)
+
+    domain_data[FRONTEND_REGISTERED] = True
+    _LOGGER.info("Schweinie Control card available at %s", CARD_URL)
 
 
 def _parse_rooms(value: Any) -> list[int]:
