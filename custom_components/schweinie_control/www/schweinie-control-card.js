@@ -3,6 +3,8 @@ class SchweinieControlCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._config = {};
+    this._mapUrl = null;
+    this._lastMapToken = null;
   }
 
   setConfig(config) {
@@ -27,14 +29,14 @@ class SchweinieControlCard extends HTMLElement {
       selfCleanButton: "button.schweinie_self_clean",
       dryingButton: "button.schweinie_manual_drying",
       rooms: [
-        { id: 1, name: "Bad", entity: "switch.schweinie_room_badezimmer", x: 23, y: 60 },
-        { id: 2, name: "Schlaf", entity: "switch.schweinie_room_schlafzimmer", x: 20, y: 85 },
-        { id: 3, name: "Julia", entity: "switch.schweinie_room_julia", x: 56, y: 58 },
-        { id: 4, name: "Flur", entity: "switch.schweinie_room_flur", x: 50, y: 88 },
-        { id: 5, name: "Wohn", entity: "switch.schweinie_room_wohnzimmer", x: 79, y: 66 },
-        { id: 6, name: "Alisa", entity: "switch.schweinie_room_alisa", x: 23, y: 33 },
-        { id: 8, name: "Küche", entity: "switch.schweinie_room_kueche", x: 79, y: 45 },
-        { id: 9, name: "Teppich", entity: "switch.schweinie_room_wohnzimmer_teppich", x: 79, y: 84 },
+        { id: 1, name: "Küche", entity: "switch.schweinie_room_kueche" },
+        { id: 2, name: "Flur", entity: "switch.schweinie_room_flur" },
+        { id: 3, name: "Alisa", entity: "switch.schweinie_room_alisa" },
+        { id: 4, name: "Julia", entity: "switch.schweinie_room_julia" },
+        { id: 5, name: "Bad", entity: "switch.schweinie_room_badezimmer" },
+        { id: 6, name: "Teppich", entity: "switch.schweinie_room_wohnzimmer_teppich" },
+        { id: 7, name: "Schlaf", entity: "switch.schweinie_room_schlafzimmer" },
+        { id: 8, name: "Wohn", entity: "switch.schweinie_room_wohnzimmer" },
       ],
       ...config,
     };
@@ -46,7 +48,7 @@ class SchweinieControlCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 8;
+    return 9;
   }
 
   state(entity) {
@@ -61,28 +63,6 @@ class SchweinieControlCard extends HTMLElement {
 
   unit(entity) {
     return this.state(entity)?.attributes?.unit_of_measurement || "";
-  }
-
-  localizeSelectValue(entity) {
-    const value = this.value(entity, "—");
-    const labels = {
-      quiet: "Тихий",
-      standard: "Стандарт",
-      strong: "Сильный",
-      turbo: "Турбо",
-      sweeping: "Пылесос",
-      mopping: "Влажная",
-      sweeping_and_mopping: "Пылесос + моп",
-      mopping_after_sweeping: "Сначала пыль",
-      quick: "Быстро",
-      standard_route: "Стандарт",
-      intensive: "Интенсивно",
-      deep: "Глубоко",
-      low: "Мало",
-      medium: "Средне",
-      high: "Много",
-    };
-    return labels[value] || value;
   }
 
   callService(domain, service, data = {}) {
@@ -105,6 +85,16 @@ class SchweinieControlCard extends HTMLElement {
     this.callService("vacuum", service, { entity_id: this._config.vacuum });
   }
 
+  getMapUrl() {
+    const mapState = this.state(this._config.map);
+    const token = mapState?.attributes?.access_token || "";
+    if (!this._mapUrl || this._lastMapToken !== token) {
+      this._lastMapToken = token;
+      this._mapUrl = `/api/camera_proxy/${this._config.map}${token ? `?token=${token}` : ""}`;
+    }
+    return this._mapUrl;
+  }
+
   render() {
     if (!this._hass) return;
 
@@ -117,8 +107,7 @@ class SchweinieControlCard extends HTMLElement {
     const time = this.value(cfg.time);
     const progress = this.value(cfg.progress);
     const selected = this.value(cfg.selected, "Keine");
-    const mapState = this.state(cfg.map);
-    const mapUrl = `/api/camera_proxy/${cfg.map}?token=${mapState?.attributes?.access_token || ""}&t=${Date.now()}`;
+    const mapUrl = this.getMapUrl();
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -131,62 +120,6 @@ class SchweinieControlCard extends HTMLElement {
           box-shadow: var(--ha-card-box-shadow, none);
         }
         .wrap { padding: 14px; display: grid; gap: 12px; }
-        .map {
-          position: relative;
-          border-radius: 20px;
-          overflow: hidden;
-          min-height: 330px;
-          background: #050505;
-          border: 1px solid rgba(255,255,255,.08);
-        }
-        .map img {
-          display: block;
-          width: 100%;
-          height: 100%;
-          min-height: 330px;
-          object-fit: cover;
-        }
-        .room {
-          position: absolute;
-          transform: translate(-50%, -50%);
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          border: 2px solid rgba(255,255,255,.24);
-          background: rgba(25, 118, 210, .72);
-          color: white;
-          display: grid;
-          place-items: center;
-          font-size: 24px;
-          font-weight: 800;
-          cursor: pointer;
-          backdrop-filter: blur(6px);
-          transition: transform .12s ease, background .12s ease, opacity .12s ease;
-          opacity: .84;
-        }
-        .room:hover { transform: translate(-50%, -50%) scale(1.08); }
-        .room.off { background: rgba(80, 80, 80, .52); opacity: .58; }
-        .room.on { background: rgba(30, 136, 229, .86); }
-        .room.on:nth-of-type(3n) { background: rgba(255, 193, 7, .88); }
-        .floating {
-          position: absolute;
-          top: 18px;
-          right: 18px;
-          display: grid;
-          grid-template-columns: repeat(2, 54px);
-          gap: 8px;
-        }
-        .mini {
-          height: 54px;
-          border: 0;
-          border-radius: 18px;
-          background: rgba(0,0,0,.38);
-          color: white;
-          font-size: 23px;
-          cursor: pointer;
-          backdrop-filter: blur(9px);
-        }
-        .mini.active { color: #29a9ff; background: rgba(0,0,0,.55); }
         .headline {
           display: grid;
           grid-template-columns: 1fr auto;
@@ -203,6 +136,44 @@ class SchweinieControlCard extends HTMLElement {
           font-weight: 700;
           font-size: 13px;
         }
+        .map {
+          position: relative;
+          border-radius: 20px;
+          overflow: hidden;
+          background: #050505;
+          border: 1px solid rgba(255,255,255,.08);
+        }
+        .map img {
+          display: block;
+          width: 100%;
+          height: auto;
+          min-height: 260px;
+          background: #050505;
+        }
+        .floating {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          display: grid;
+          grid-template-columns: repeat(2, 48px);
+          gap: 8px;
+        }
+        .mini {
+          height: 48px;
+          border: 1px solid rgba(255,255,255,.14);
+          border-radius: 17px;
+          background: rgba(0,0,0,.76);
+          color: white;
+          font-size: 22px;
+          cursor: pointer;
+          backdrop-filter: blur(8px);
+          box-shadow: 0 8px 24px rgba(0,0,0,.28);
+        }
+        .mini.active {
+          color: #29a9ff;
+          border-color: rgba(41,169,255,.58);
+          background: rgba(41,169,255,.18);
+        }
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
         .stat, .tile, .action {
           border: 1px solid rgba(255,255,255,.08);
@@ -216,7 +187,8 @@ class SchweinieControlCard extends HTMLElement {
         .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
         .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-        .tile, .action {
+        .rooms { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .tile, .action, .roomBtn {
           display: grid;
           place-items: center;
           text-align: center;
@@ -224,6 +196,31 @@ class SchweinieControlCard extends HTMLElement {
           cursor: pointer;
           user-select: none;
         }
+        .roomBtn {
+          border: 1px solid rgba(255,255,255,.08);
+          background: rgba(255,255,255,.045);
+          border-radius: 16px;
+          min-height: 58px;
+          padding: 10px 6px;
+          font-weight: 760;
+          font-size: 13px;
+        }
+        .roomBtn .id {
+          width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          display: grid;
+          place-items: center;
+          background: rgba(255,255,255,.12);
+          color: var(--secondary-text-color);
+          font-size: 12px;
+        }
+        .roomBtn.active {
+          border-color: rgba(41,169,255,.58);
+          background: rgba(41,169,255,.14);
+          color: #29a9ff;
+        }
+        .roomBtn.active .id { background: #29a9ff; color: #000; }
         .tile .ico, .action .ico { font-size: 28px; line-height: 1; }
         .tile .label, .action .label { font-size: 15px; font-weight: 720; }
         .tile.active {
@@ -243,8 +240,8 @@ class SchweinieControlCard extends HTMLElement {
         @media (max-width: 520px) {
           .stats { grid-template-columns: repeat(2, 1fr); }
           .grid4 { grid-template-columns: repeat(2, 1fr); }
+          .rooms { grid-template-columns: repeat(2, 1fr); }
           .grid3 { grid-template-columns: repeat(3, 1fr); }
-          .map, .map img { min-height: 300px; }
         }
       </style>
 
@@ -260,15 +257,11 @@ class SchweinieControlCard extends HTMLElement {
 
           <div class="map">
             <img src="${mapUrl}" />
-            ${cfg.rooms.map(roomCfg => {
-              const on = this.value(roomCfg.entity) === "on";
-              return `<button class="room ${on ? "on" : "off"}" style="left:${roomCfg.x}%; top:${roomCfg.y}%" data-action="toggle-room" data-entity="${roomCfg.entity}" title="${roomCfg.name}">${on ? "✓" : ""}</button>`;
-            }).join("")}
             <div class="floating">
-              <button class="mini" data-action="select" data-entity="${cfg.mode}" data-option="sweeping" title="Пылесос">⌁</button>
-              <button class="mini" data-action="select" data-entity="${cfg.humidity}" data-option="high" title="Вода">💧</button>
-              <button class="mini" data-action="select" data-entity="${cfg.mode}" data-option="mopping_after_sweeping" title="Сначала пыль, потом моп">♨</button>
-              <button class="mini" data-action="select" data-entity="${cfg.route}" data-option="intensive" title="Интенсивно">»</button>
+              ${this.quickButton(cfg.mode, "sweeping", "⌁", "Пылесос")}
+              ${this.quickButton(cfg.humidity, "high", "💧", "Вода")}
+              ${this.quickButton(cfg.mode, "mopping_after_sweeping", "♨", "Сначала пыль, потом моп")}
+              ${this.quickButton(cfg.route, "intensive", "»", "Интенсивно")}
             </div>
           </div>
 
@@ -277,6 +270,11 @@ class SchweinieControlCard extends HTMLElement {
             <div class="stat"><div class="k">Прогресс</div><div class="v">${progress}${this.unit(cfg.progress)}</div></div>
             <div class="stat"><div class="k">Площадь</div><div class="v">${area}${this.unit(cfg.area)}</div></div>
             <div class="stat"><div class="k">Время</div><div class="v">${time}${this.unit(cfg.time)}</div></div>
+          </div>
+
+          <div class="section-title">Комнаты</div>
+          <div class="rooms">
+            ${cfg.rooms.map(room => this.roomButton(room)).join("")}
           </div>
 
           <div class="section-title">Мощность</div>
@@ -320,6 +318,16 @@ class SchweinieControlCard extends HTMLElement {
         if (action === "vacuum") this.vacuum(target.dataset.service);
       });
     });
+  }
+
+  quickButton(entity, option, icon, title) {
+    const active = this.value(entity) === option;
+    return `<button class="mini ${active ? "active" : ""}" data-action="select" data-entity="${entity}" data-option="${option}" title="${title}">${icon}</button>`;
+  }
+
+  roomButton(room) {
+    const active = this.value(room.entity) === "on";
+    return `<div class="roomBtn ${active ? "active" : ""}" data-action="toggle-room" data-entity="${room.entity}"><div class="id">${room.id}</div><div>${room.name}</div></div>`;
   }
 
   suctionTile(option, label, icon) {
