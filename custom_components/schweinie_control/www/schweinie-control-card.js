@@ -27,14 +27,14 @@ class SchweinieControlCard extends HTMLElement {
       selfCleanButton: "button.schweinie_self_clean",
       dryingButton: "button.schweinie_manual_drying",
       rooms: [
-        { id: 1, name: "Küche", x: 46, y: 69, w: 17, h: 22 },
-        { id: 2, name: "Flur", x: 49, y: 36, w: 18, h: 30 },
-        { id: 3, name: "Alisa", x: 25, y: 68, w: 26, h: 27 },
-        { id: 4, name: "Julia", x: 23, y: 45, w: 28, h: 25 },
-        { id: 5, name: "Badezimmer", x: 83, y: 39, w: 31, h: 16 },
-        { id: 6, name: "Wohnzimmer Teppich", x: 82, y: 68, w: 33, h: 26 },
-        { id: 7, name: "Schlafzimmer", x: 26, y: 14, w: 31, h: 23 },
-        { id: 8, name: "Wohnzimmer", x: 83, y: 52, w: 31, h: 22 },
+        { id: 1, name: "Küche", points: "37,58 54,58 54,83 37,83" },
+        { id: 2, name: "Flur", points: "39,20 58,20 58,58 54,58 54,66 38,66 38,51 33,51 33,32 39,32" },
+        { id: 3, name: "Alisa", points: "10,55 37,55 37,84 10,84" },
+        { id: 4, name: "Julia", points: "10,31 38,31 38,55 10,55" },
+        { id: 5, name: "Badezimmer", points: "66,30 98,30 98,44 66,44" },
+        { id: 6, name: "Wohnzimmer Teppich", points: "66,68 98,68 98,90 66,90" },
+        { id: 7, name: "Schlafzimmer", points: "12,4 43,4 43,28 12,28" },
+        { id: 8, name: "Wohnzimmer", points: "58,44 98,44 98,68 58,68" },
       ],
       ...config,
     };
@@ -209,52 +209,45 @@ class SchweinieControlCard extends HTMLElement {
           user-select: none;
           -webkit-user-drag: none;
         }
-        .zone {
-          appearance: none;
-          -webkit-appearance: none;
+        .room-overlay {
           position: absolute;
-          transform: translate(-50%, -50%);
-          border: 0 !important;
-          border-radius: 10px;
-          background: transparent !important;
-          box-shadow: none !important;
-          color: transparent;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 2;
+          pointer-events: none;
+        }
+        .room-poly {
+          pointer-events: auto;
           cursor: pointer;
-          padding: 0;
-          margin: 0;
+          fill: rgba(255,255,255,0);
+          stroke: rgba(255,255,255,0);
+          stroke-width: 0;
           outline: none;
-          opacity: 1;
           -webkit-tap-highlight-color: transparent;
-          touch-action: manipulation;
         }
-        .zone:focus, .zone:focus-visible, .zone:active {
-          outline: none;
-          background: transparent !important;
-          box-shadow: none !important;
+        .room-poly.selected {
+          fill: rgba(41,169,255,.20);
+          stroke: rgba(41,169,255,.85);
+          stroke-width: 1.2;
         }
-        .zone.selected {
-          border: 1px solid rgba(41,169,255,.78) !important;
-          background: rgba(41,169,255,.18) !important;
-          box-shadow: inset 0 0 22px rgba(41,169,255,.18) !important;
-          backdrop-filter: blur(1px);
+        .check {
+          pointer-events: none;
+          opacity: 0;
         }
-        .zone.selected::after {
-          content: "✓";
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          width: 38px;
-          height: 38px;
-          display: grid;
-          place-items: center;
-          border-radius: 999px;
-          background: rgba(41,169,255,.88);
-          color: white;
-          font-size: 25px;
+        .check-bg {
+          fill: rgba(41,169,255,.92);
+          stroke: rgba(255,255,255,.52);
+          stroke-width: .8;
+        }
+        .check-text {
+          fill: #fff;
+          font-size: 6px;
           font-weight: 800;
-          border: 2px solid rgba(255,255,255,.45);
+          text-anchor: middle;
+          dominant-baseline: central;
         }
+        .check.selected { opacity: 1; }
         .floating {
           position: absolute;
           top: 10px;
@@ -263,6 +256,7 @@ class SchweinieControlCard extends HTMLElement {
           grid-template-columns: repeat(2, 44px);
           gap: 7px;
           max-width: calc(100% - 20px);
+          z-index: 3;
         }
         .mini {
           appearance: none;
@@ -346,7 +340,10 @@ class SchweinieControlCard extends HTMLElement {
 
           <div class="map">
             <img src="${mapUrl}" />
-            ${cfg.rooms.map((roomCfg) => this.zone(roomCfg)).join("")}
+            <svg class="room-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+              ${cfg.rooms.map((roomCfg) => this.zone(roomCfg)).join("")}
+              ${cfg.rooms.map((roomCfg) => this.check(roomCfg)).join("")}
+            </svg>
             <div class="floating">
               ${this.quickButton(cfg.mode, "sweeping", "⌁", "Пылесос")}
               ${this.quickButton(cfg.humidity, "high", "💧", "Вода")}
@@ -408,7 +405,19 @@ class SchweinieControlCard extends HTMLElement {
 
   zone(room) {
     const selected = this._selectedRooms.has(room.id);
-    return `<button class="zone ${selected ? "selected" : ""}" data-action="toggle-room" data-room-id="${room.id}" title="${room.name}" style="left:${room.x}%; top:${room.y}%; width:${room.w}%; height:${room.h}%;"></button>`;
+    return `<polygon class="room-poly ${selected ? "selected" : ""}" data-action="toggle-room" data-room-id="${room.id}" points="${room.points}" title="${room.name}"></polygon>`;
+  }
+
+  check(room) {
+    const selected = this._selectedRooms.has(room.id);
+    const center = this.polygonCenter(room.points);
+    return `<g class="check ${selected ? "selected" : ""}"><circle class="check-bg" cx="${center.x}" cy="${center.y}" r="4.6"></circle><text class="check-text" x="${center.x}" y="${center.y + 0.2}">✓</text></g>`;
+  }
+
+  polygonCenter(points) {
+    const pairs = points.trim().split(/\s+/).map((pair) => pair.split(",").map(Number));
+    const sum = pairs.reduce((acc, [x, y]) => ({ x: acc.x + x, y: acc.y + y }), { x: 0, y: 0 });
+    return { x: sum.x / pairs.length, y: sum.y / pairs.length };
   }
 
   quickButton(entity, option, icon, title) {
