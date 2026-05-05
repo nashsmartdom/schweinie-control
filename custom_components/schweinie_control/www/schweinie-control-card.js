@@ -5,6 +5,7 @@ class SchweinieControlCard extends HTMLElement {
     this._config = {};
     this._mapUrl = null;
     this._lastMapToken = null;
+    this._selectedRooms = new Set();
   }
 
   setConfig(config) {
@@ -22,21 +23,18 @@ class SchweinieControlCard extends HTMLElement {
       route: "select.schweinie_cleaning_route",
       humidity: "select.schweinie_mop_pad_humidity",
       repeats: "select.schweinie_control_repeats",
-      selected: "sensor.schweinie_control_selected_rooms",
-      cleanButton: "button.schweinie_control_clean_selected",
-      resetButton: "button.schweinie_control_reset_selection",
       autoEmptyButton: "button.schweinie_start_auto_empty",
       selfCleanButton: "button.schweinie_self_clean",
       dryingButton: "button.schweinie_manual_drying",
       rooms: [
-        { id: 1, name: "Küche", entity: "switch.schweinie_room_kueche" },
-        { id: 2, name: "Flur", entity: "switch.schweinie_room_flur" },
-        { id: 3, name: "Alisa", entity: "switch.schweinie_room_alisa" },
-        { id: 4, name: "Julia", entity: "switch.schweinie_room_julia" },
-        { id: 5, name: "Bad", entity: "switch.schweinie_room_badezimmer" },
-        { id: 6, name: "Teppich", entity: "switch.schweinie_room_wohnzimmer_teppich" },
-        { id: 7, name: "Schlaf", entity: "switch.schweinie_room_schlafzimmer" },
-        { id: 8, name: "Wohn", entity: "switch.schweinie_room_wohnzimmer" },
+        { id: 1, name: "Küche", x: 46, y: 69, w: 17, h: 22 },
+        { id: 2, name: "Flur", x: 49, y: 36, w: 18, h: 30 },
+        { id: 3, name: "Alisa", x: 25, y: 68, w: 26, h: 27 },
+        { id: 4, name: "Julia", x: 23, y: 45, w: 28, h: 25 },
+        { id: 5, name: "Badezimmer", x: 83, y: 39, w: 31, h: 16 },
+        { id: 6, name: "Wohnzimmer Teppich", x: 82, y: 68, w: 33, h: 26 },
+        { id: 7, name: "Schlafzimmer", x: 26, y: 14, w: 31, h: 23 },
+        { id: 8, name: "Wohnzimmer", x: 83, y: 52, w: 31, h: 22 },
       ],
       ...config,
     };
@@ -48,7 +46,7 @@ class SchweinieControlCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 9;
+    return 8;
   }
 
   state(entity) {
@@ -73,16 +71,47 @@ class SchweinieControlCard extends HTMLElement {
     this.callService("select", "select_option", { entity_id: entity, option });
   }
 
-  toggle(entity) {
-    this.callService("switch", "toggle", { entity_id: entity });
-  }
-
   press(entity) {
     this.callService("button", "press", { entity_id: entity });
   }
 
   vacuum(service) {
     this.callService("vacuum", service, { entity_id: this._config.vacuum });
+  }
+
+  toggleRoom(roomId) {
+    if (this._selectedRooms.has(roomId)) {
+      this._selectedRooms.delete(roomId);
+    } else {
+      this._selectedRooms.add(roomId);
+    }
+    this.render();
+  }
+
+  selectedRoomNames() {
+    const byId = new Map(this._config.rooms.map((room) => [room.id, room.name]));
+    return Array.from(this._selectedRooms)
+      .sort((a, b) => a - b)
+      .map((id) => byId.get(id) || String(id));
+  }
+
+  selectedText() {
+    const names = this.selectedRoomNames();
+    return names.length ? names.join(", ") : "Keine";
+  }
+
+  startSelected() {
+    const rooms = Array.from(this._selectedRooms).sort((a, b) => a - b);
+    if (!rooms.length) {
+      this.callService("persistent_notification", "create", {
+        title: "Schweinie",
+        message: "Keine Zimmer ausgewählt.",
+      });
+      return;
+    }
+
+    const repeats = Number.parseInt(this.value(this._config.repeats, "1"), 10) || 1;
+    this.callService("schweinie_control", "clean_rooms", { rooms, repeats });
   }
 
   getMapUrl() {
@@ -106,7 +135,6 @@ class SchweinieControlCard extends HTMLElement {
     const area = this.value(cfg.area);
     const time = this.value(cfg.time);
     const progress = this.value(cfg.progress);
-    const selected = this.value(cfg.selected, "Keine");
     const mapUrl = this.getMapUrl();
 
     this.shadowRoot.innerHTML = `
@@ -150,6 +178,40 @@ class SchweinieControlCard extends HTMLElement {
           min-height: 260px;
           background: #050505;
         }
+        .zone {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          border: 1px solid rgba(255,255,255,0);
+          border-radius: 999px;
+          background: rgba(255,255,255,0);
+          cursor: pointer;
+          padding: 0;
+          outline: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .zone.selected {
+          border-color: rgba(41,169,255,.78);
+          background: rgba(41,169,255,.20);
+          box-shadow: 0 0 0 999px rgba(0,0,0,0), inset 0 0 22px rgba(41,169,255,.18);
+          backdrop-filter: blur(1px);
+        }
+        .zone.selected::after {
+          content: "✓";
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          width: 42px;
+          height: 42px;
+          display: grid;
+          place-items: center;
+          border-radius: 999px;
+          background: rgba(41,169,255,.88);
+          color: white;
+          font-size: 28px;
+          font-weight: 800;
+          border: 2px solid rgba(255,255,255,.45);
+        }
         .floating {
           position: absolute;
           top: 12px;
@@ -184,11 +246,9 @@ class SchweinieControlCard extends HTMLElement {
         }
         .stat .k { color: var(--secondary-text-color); font-size: 12px; }
         .stat .v { font-size: 18px; font-weight: 750; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
         .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-        .rooms { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-        .tile, .action, .roomBtn {
+        .tile, .action {
           display: grid;
           place-items: center;
           text-align: center;
@@ -196,31 +256,6 @@ class SchweinieControlCard extends HTMLElement {
           cursor: pointer;
           user-select: none;
         }
-        .roomBtn {
-          border: 1px solid rgba(255,255,255,.08);
-          background: rgba(255,255,255,.045);
-          border-radius: 16px;
-          min-height: 58px;
-          padding: 10px 6px;
-          font-weight: 760;
-          font-size: 13px;
-        }
-        .roomBtn .id {
-          width: 22px;
-          height: 22px;
-          border-radius: 999px;
-          display: grid;
-          place-items: center;
-          background: rgba(255,255,255,.12);
-          color: var(--secondary-text-color);
-          font-size: 12px;
-        }
-        .roomBtn.active {
-          border-color: rgba(41,169,255,.58);
-          background: rgba(41,169,255,.14);
-          color: #29a9ff;
-        }
-        .roomBtn.active .id { background: #29a9ff; color: #000; }
         .tile .ico, .action .ico { font-size: 28px; line-height: 1; }
         .tile .label, .action .label { font-size: 15px; font-weight: 720; }
         .tile.active {
@@ -240,7 +275,6 @@ class SchweinieControlCard extends HTMLElement {
         @media (max-width: 520px) {
           .stats { grid-template-columns: repeat(2, 1fr); }
           .grid4 { grid-template-columns: repeat(2, 1fr); }
-          .rooms { grid-template-columns: repeat(2, 1fr); }
           .grid3 { grid-template-columns: repeat(3, 1fr); }
         }
       </style>
@@ -257,6 +291,7 @@ class SchweinieControlCard extends HTMLElement {
 
           <div class="map">
             <img src="${mapUrl}" />
+            ${cfg.rooms.map((roomCfg) => this.zone(roomCfg)).join("")}
             <div class="floating">
               ${this.quickButton(cfg.mode, "sweeping", "⌁", "Пылесос")}
               ${this.quickButton(cfg.humidity, "high", "💧", "Вода")}
@@ -266,15 +301,10 @@ class SchweinieControlCard extends HTMLElement {
           </div>
 
           <div class="stats">
-            <div class="stat"><div class="k">Выбрано</div><div class="v">${selected}</div></div>
+            <div class="stat"><div class="k">Выбрано</div><div class="v">${this.selectedText()}</div></div>
             <div class="stat"><div class="k">Прогресс</div><div class="v">${progress}${this.unit(cfg.progress)}</div></div>
             <div class="stat"><div class="k">Площадь</div><div class="v">${area}${this.unit(cfg.area)}</div></div>
             <div class="stat"><div class="k">Время</div><div class="v">${time}${this.unit(cfg.time)}</div></div>
-          </div>
-
-          <div class="section-title">Комнаты</div>
-          <div class="rooms">
-            ${cfg.rooms.map(room => this.roomButton(room)).join("")}
           </div>
 
           <div class="section-title">Мощность</div>
@@ -293,7 +323,7 @@ class SchweinieControlCard extends HTMLElement {
           </div>
 
           <div class="grid3">
-            <div class="action primary" data-action="press" data-entity="${cfg.cleanButton}"><div class="ico">▶</div><div class="label">Старт</div></div>
+            <div class="action primary" data-action="start-selected"><div class="ico">▶</div><div class="label">Старт</div></div>
             <div class="action danger" data-action="vacuum" data-service="stop"><div class="ico">■</div><div class="label">Стоп</div></div>
             <div class="action" data-action="vacuum" data-service="return_to_base"><div class="ico">⌂</div><div class="label">База</div></div>
           </div>
@@ -312,22 +342,23 @@ class SchweinieControlCard extends HTMLElement {
       el.addEventListener("click", (ev) => {
         const target = ev.currentTarget;
         const action = target.dataset.action;
-        if (action === "toggle-room") this.toggle(target.dataset.entity);
+        if (action === "toggle-room") this.toggleRoom(Number.parseInt(target.dataset.roomId, 10));
         if (action === "select") this.select(target.dataset.entity, target.dataset.option);
         if (action === "press") this.press(target.dataset.entity);
         if (action === "vacuum") this.vacuum(target.dataset.service);
+        if (action === "start-selected") this.startSelected();
       });
     });
+  }
+
+  zone(room) {
+    const selected = this._selectedRooms.has(room.id);
+    return `<button class="zone ${selected ? "selected" : ""}" data-action="toggle-room" data-room-id="${room.id}" title="${room.name}" style="left:${room.x}%; top:${room.y}%; width:${room.w}%; height:${room.h}%;"></button>`;
   }
 
   quickButton(entity, option, icon, title) {
     const active = this.value(entity) === option;
     return `<button class="mini ${active ? "active" : ""}" data-action="select" data-entity="${entity}" data-option="${option}" title="${title}">${icon}</button>`;
-  }
-
-  roomButton(room) {
-    const active = this.value(room.entity) === "on";
-    return `<div class="roomBtn ${active ? "active" : ""}" data-action="toggle-room" data-entity="${room.entity}"><div class="id">${room.id}</div><div>${room.name}</div></div>`;
   }
 
   suctionTile(option, label, icon) {
