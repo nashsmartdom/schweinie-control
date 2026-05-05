@@ -139,33 +139,60 @@ class SchweinieControlCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; }
+        :host {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          overflow-x: hidden;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
         ha-card {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
           border-radius: 24px;
           overflow: hidden;
           background: #101010;
           color: var(--primary-text-color);
           box-shadow: var(--ha-card-box-shadow, none);
         }
-        .wrap { padding: 14px; display: grid; gap: 12px; }
-        .headline {
+        .wrap {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow-x: hidden;
+          padding: 14px;
           display: grid;
-          grid-template-columns: 1fr auto;
+          gap: 12px;
+        }
+        .headline {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
           gap: 10px;
           align-items: center;
           padding: 4px 2px 0;
         }
         .title { font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
-        .sub { color: var(--secondary-text-color); font-size: 13px; margin-top: 3px; }
+        .sub { color: var(--secondary-text-color); font-size: 13px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .pill {
           border-radius: 999px;
           background: rgba(255,255,255,.08);
           padding: 8px 12px;
           font-weight: 700;
           font-size: 13px;
+          white-space: nowrap;
+          max-width: 72px;
+          overflow: hidden;
+          text-overflow: clip;
         }
         .map {
           position: relative;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
           border-radius: 20px;
           overflow: hidden;
           background: #050505;
@@ -174,25 +201,41 @@ class SchweinieControlCard extends HTMLElement {
         .map img {
           display: block;
           width: 100%;
+          max-width: 100%;
           height: auto;
-          min-height: 260px;
+          min-height: 0;
+          object-fit: contain;
           background: #050505;
+          user-select: none;
+          -webkit-user-drag: none;
         }
         .zone {
+          appearance: none;
+          -webkit-appearance: none;
           position: absolute;
           transform: translate(-50%, -50%);
-          border: 1px solid rgba(255,255,255,0);
-          border-radius: 999px;
-          background: rgba(255,255,255,0);
+          border: 0 !important;
+          border-radius: 10px;
+          background: transparent !important;
+          box-shadow: none !important;
+          color: transparent;
           cursor: pointer;
           padding: 0;
+          margin: 0;
           outline: none;
+          opacity: 1;
           -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+        .zone:focus, .zone:focus-visible, .zone:active {
+          outline: none;
+          background: transparent !important;
+          box-shadow: none !important;
         }
         .zone.selected {
-          border-color: rgba(41,169,255,.78);
-          background: rgba(41,169,255,.20);
-          box-shadow: 0 0 0 999px rgba(0,0,0,0), inset 0 0 22px rgba(41,169,255,.18);
+          border: 1px solid rgba(41,169,255,.78) !important;
+          background: rgba(41,169,255,.18) !important;
+          box-shadow: inset 0 0 22px rgba(41,169,255,.18) !important;
           backdrop-filter: blur(1px);
         }
         .zone.selected::after {
@@ -201,43 +244,49 @@ class SchweinieControlCard extends HTMLElement {
           left: 50%;
           top: 50%;
           transform: translate(-50%, -50%);
-          width: 42px;
-          height: 42px;
+          width: 38px;
+          height: 38px;
           display: grid;
           place-items: center;
           border-radius: 999px;
           background: rgba(41,169,255,.88);
           color: white;
-          font-size: 28px;
+          font-size: 25px;
           font-weight: 800;
           border: 2px solid rgba(255,255,255,.45);
         }
         .floating {
           position: absolute;
-          top: 12px;
-          right: 12px;
+          top: 10px;
+          right: 10px;
           display: grid;
-          grid-template-columns: repeat(2, 48px);
-          gap: 8px;
+          grid-template-columns: repeat(2, 44px);
+          gap: 7px;
+          max-width: calc(100% - 20px);
         }
         .mini {
-          height: 48px;
+          appearance: none;
+          -webkit-appearance: none;
+          width: 44px;
+          height: 44px;
           border: 1px solid rgba(255,255,255,.14);
-          border-radius: 17px;
+          border-radius: 16px;
           background: rgba(0,0,0,.76);
           color: white;
-          font-size: 22px;
+          font-size: 20px;
           cursor: pointer;
           backdrop-filter: blur(8px);
           box-shadow: 0 8px 24px rgba(0,0,0,.28);
+          padding: 0;
         }
         .mini.active {
           color: #29a9ff;
           border-color: rgba(41,169,255,.58);
           background: rgba(41,169,255,.18);
         }
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-width: 0; }
         .stat, .tile, .action {
+          min-width: 0;
           border: 1px solid rgba(255,255,255,.08);
           background: rgba(255,255,255,.045);
           border-radius: 18px;
@@ -246,8 +295,8 @@ class SchweinieControlCard extends HTMLElement {
         }
         .stat .k { color: var(--secondary-text-color); font-size: 12px; }
         .stat .v { font-size: 18px; font-weight: 750; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-        .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+        .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-width: 0; }
+        .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; min-width: 0; }
         .tile, .action {
           display: grid;
           place-items: center;
@@ -257,7 +306,7 @@ class SchweinieControlCard extends HTMLElement {
           user-select: none;
         }
         .tile .ico, .action .ico { font-size: 28px; line-height: 1; }
-        .tile .label, .action .label { font-size: 15px; font-weight: 720; }
+        .tile .label, .action .label { font-size: 15px; font-weight: 720; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .tile.active {
           border-color: rgba(41,169,255,.55);
           background: rgba(41,169,255,.13);
@@ -273,9 +322,15 @@ class SchweinieControlCard extends HTMLElement {
         }
         .section-title { font-size: 13px; color: var(--secondary-text-color); font-weight: 700; padding-left: 3px; margin-top: 2px; }
         @media (max-width: 520px) {
-          .stats { grid-template-columns: repeat(2, 1fr); }
-          .grid4 { grid-template-columns: repeat(2, 1fr); }
-          .grid3 { grid-template-columns: repeat(3, 1fr); }
+          .wrap { padding: 12px; gap: 10px; }
+          .title { font-size: 21px; }
+          .pill { max-width: 60px; padding: 7px 10px; }
+          .floating { grid-template-columns: repeat(2, 40px); gap: 6px; top: 8px; right: 8px; }
+          .mini { width: 40px; height: 40px; border-radius: 14px; font-size: 18px; }
+          .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+          .tile, .action, .stat { padding: 10px; }
         }
       </style>
 
