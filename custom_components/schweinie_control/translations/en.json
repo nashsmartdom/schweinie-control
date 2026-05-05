@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schweinie Control",
+        "description": "Configure the Schweinie companion integration.",
+        "data": {
+          "vacuum_entity": "Vacuum entity",
+          "customized_cleaning_switch": "Customized cleaning switch"
+        }
+      }
+    }
+  }
+}
