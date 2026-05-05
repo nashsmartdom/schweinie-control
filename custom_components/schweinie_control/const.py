@@ -6,15 +6,17 @@ DEFAULT_CUSTOMIZED_CLEANING_SWITCH = "switch.schweinie_customized_cleaning"
 CONF_VACUUM_ENTITY = "vacuum_entity"
 CONF_CUSTOMIZED_CLEANING_SWITCH = "customized_cleaning_switch"
 
+# Room IDs according to the visible Dreame map labels.
+# Room 9 / Room 10 is intentionally omitted because it is a false room.
 ROOMS = {
-    1: "Badezimmer",
-    2: "Schlafzimmer",
-    3: "Julia",
-    4: "Flur",
-    5: "Wohnzimmer",
-    6: "Alisa",
-    8: "Küche",
-    9: "Wohnzimmer Teppich",
+    1: "Küche",
+    2: "Flur",
+    3: "Alisa",
+    4: "Julia",
+    5: "Badezimmer",
+    6: "Wohnzimmer Teppich",
+    7: "Schlafzimmer",
+    8: "Wohnzimmer",
 }
 
 PLATFORMS = ["switch", "select", "sensor", "button"]
