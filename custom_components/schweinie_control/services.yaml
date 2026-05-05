@@ -1,0 +1,24 @@
+clean_rooms:
+  name: Clean rooms
+  description: Start Dreame segment cleaning. If no rooms are supplied, the currently selected room switches are used.
+  fields:
+    rooms:
+      name: Rooms
+      description: List of Dreame room IDs, for example [1, 4, 8]. Leave empty to use selected rooms.
+      required: false
+      selector:
+        object:
+    repeats:
+      name: Repeats
+      description: Number of cleaning repeats.
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 3
+          mode: box
+
+reset_selection:
+  name: Reset selection
+  description: Turn off all Schweinie room-selection switches.
