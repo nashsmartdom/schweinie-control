@@ -221,20 +221,20 @@ class SchweinieControlCard extends HTMLElement {
           width: 100%;
           height: 100%;
           z-index: 2;
-          pointer-events: none;
+          pointer-events: auto;
         }
         .room-poly {
-          pointer-events: auto;
+          pointer-events: all;
           cursor: pointer;
-          fill: rgba(255,255,255,0);
-          stroke: rgba(255,255,255,0);
-          stroke-width: 0;
+          fill: rgba(255, 0, 0, .18);
+          stroke: rgba(255, 0, 0, .88);
+          stroke-width: .8;
           outline: none;
           -webkit-tap-highlight-color: transparent;
         }
         .room-poly.selected {
-          fill: rgba(41,169,255,.20);
-          stroke: rgba(41,169,255,.85);
+          fill: rgba(41,169,255,.25);
+          stroke: rgba(41,169,255,.95);
           stroke-width: 1.2;
         }
         .check {
