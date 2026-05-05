@@ -97,7 +97,13 @@ class SchweinieControlCard extends HTMLElement {
 
   selectedText() {
     const names = this.selectedRoomNames();
-    return names.length ? names.join(", ") : "Keine";
+    if (!names.length) return "Keine";
+    if (names.length === 1) return names[0];
+    return `${names.length} Räume`;
+  }
+
+  selectedTitle() {
+    return this.selectedRoomNames().join(", ") || "Keine";
   }
 
   startSelected() {
@@ -267,20 +273,25 @@ class SchweinieControlCard extends HTMLElement {
           border-radius: 16px;
           background: rgba(0,0,0,.76);
           color: white;
-          font-size: 20px;
+          font-size: 18px;
           cursor: pointer;
           backdrop-filter: blur(8px);
           box-shadow: 0 8px 24px rgba(0,0,0,.28);
           padding: 0;
+          display: grid;
+          place-items: center;
+          line-height: 1;
         }
         .mini.active {
           color: #29a9ff;
           border-color: rgba(41,169,255,.58);
           background: rgba(41,169,255,.18);
         }
-        .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+        .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-width: 0; max-width: 100%; overflow: hidden; }
         .stat, .tile, .action {
           min-width: 0;
+          max-width: 100%;
+          overflow: hidden;
           border: 1px solid rgba(255,255,255,.08);
           background: rgba(255,255,255,.045);
           border-radius: 18px;
@@ -288,7 +299,7 @@ class SchweinieControlCard extends HTMLElement {
           padding: 12px;
         }
         .stat .k { color: var(--secondary-text-color); font-size: 12px; }
-        .stat .v { font-size: 18px; font-weight: 750; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stat .v { display: block; width: 100%; max-width: 100%; min-width: 0; font-size: 18px; font-weight: 750; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-width: 0; }
         .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; min-width: 0; }
         .tile, .action {
@@ -320,7 +331,7 @@ class SchweinieControlCard extends HTMLElement {
           .title { font-size: 21px; }
           .pill { max-width: 60px; padding: 7px 10px; }
           .floating { grid-template-columns: repeat(2, 40px); gap: 6px; top: 8px; right: 8px; }
-          .mini { width: 40px; height: 40px; border-radius: 14px; font-size: 18px; }
+          .mini { width: 40px; height: 40px; border-radius: 14px; font-size: 16px; }
           .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -345,15 +356,15 @@ class SchweinieControlCard extends HTMLElement {
               ${cfg.rooms.map((roomCfg) => this.check(roomCfg)).join("")}
             </svg>
             <div class="floating">
-              ${this.quickButton(cfg.mode, "sweeping", "⌁", "Пылесос")}
-              ${this.quickButton(cfg.humidity, "high", "💧", "Вода")}
-              ${this.quickButton(cfg.mode, "mopping_after_sweeping", "♨", "Сначала пыль, потом моп")}
-              ${this.quickButton(cfg.route, "intensive", "»", "Интенсивно")}
+              ${this.quickButton(cfg.mode, "sweeping", "🧹", "Сухая уборка")}
+              ${this.quickButton(cfg.mode, "mopping", "💧", "Мокрая уборка")}
+              ${this.quickButton(cfg.mode, "sweeping_and_mopping", "🧹💧", "Сухая + мокрая")}
+              ${this.quickButton(cfg.mode, "mopping_after_sweeping", "🧹›💧", "Сначала сухая, потом мокрая")}
             </div>
           </div>
 
           <div class="stats">
-            <div class="stat"><div class="k">Выбрано</div><div class="v">${this.selectedText()}</div></div>
+            <div class="stat"><div class="k">Выбрано</div><div class="v" title="${this.selectedTitle()}">${this.selectedText()}</div></div>
             <div class="stat"><div class="k">Прогресс</div><div class="v">${progress}${this.unit(cfg.progress)}</div></div>
             <div class="stat"><div class="k">Площадь</div><div class="v">${area}${this.unit(cfg.area)}</div></div>
             <div class="stat"><div class="k">Время</div><div class="v">${time}${this.unit(cfg.time)}</div></div>
